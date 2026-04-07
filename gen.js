@@ -1,70 +1,55 @@
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
 // --- KONFIGURACJA ---
-const CONFIG = {
-    username: "surikenno",
-    repo: "mc-server-files",
-    branch: "main",
-    minecraftVersion: "1.20.1",
-    modLoader: "forge",
-    loaderVersion: "47.2.0",
-    javaVersion: "17"
-};
+const foldersToScan = ['mods', 'resourcepacks']; 
+const manifestName = 'manifest.json';
+const baseUrl = 'https://raw.githubusercontent.com/surikenno/mc-server-files/main/';
+const minecraftVersion = '1.20.1';
+const modLoader = 'forge'; // Możesz zmienić na 'fabric'
 
-const modsFolder = './mods'; // Folder z plikami .jar
-const outputFile = 'manifest.json';
+function generateManifest() {
+    console.log('--- GENEROWANIE MANIFESTU (Mods & Resourcepacks) ---');
 
-// Funkcja do obliczania sumy kontrolnej SHA1
-function getHash(filePath) {
-    const fileBuffer = fs.readFileSync(filePath);
-    return crypto.createHash('sha1').update(fileBuffer).digest('hex');
-}
+    try {
+        const manifestData = {
+            minecraftVersion: minecraftVersion,
+            modLoader: modLoader,
+            files: []
+        };
 
-async function generate() {
-    console.log("Rozpoczynam generowanie manifestu...");
+        foldersToScan.forEach(folder => {
+            const folderPath = path.join(__dirname, folder);
 
-    const manifest = {
-        version: "1.0.0",
-        launcherConfig: {
-            minecraftVersion: CONFIG.minecraftVersion,
-            modLoader: CONFIG.modLoader,
-            loaderVersion: CONFIG.loaderVersion,
-            javaVersion: CONFIG.javaVersion
-        },
-        files: []
-    };
+            if (fs.existsSync(folderPath)) {
+                const files = fs.readdirSync(folderPath);
+                
+                files.forEach(file => {
+                    const fullPath = path.join(folderPath, file);
+                    
+                    // Sprawdzamy czy to plik (paczki zasobów MUSZĄ być w .zip)
+                    if (fs.statSync(fullPath).isFile()) {
+                        manifestData.files.push({
+                            path: `${folder}/${file}`,
+                            url: `${baseUrl}${folder}/${file}`
+                        });
+                        console.log(`+ [${folder.toUpperCase()}] Dodano: ${file}`);
+                    }
+                });
+            } else {
+                console.warn(`⚠️ Folder ${folder} nie istnieje w tej lokalizacji.`);
+            }
+        });
 
-    if (!fs.existsSync(modsFolder)) {
-        console.error(`BŁĄD: Folder ${modsFolder} nie istnieje!`);
-        return;
+        // Zapis do manifest.json
+        fs.writeFileSync(manifestName, JSON.stringify(manifestData, null, 4));
+        
+        console.log(`\n✅ GOTOWE! Plik ${manifestName} został zaktualizowany.`);
+        console.log(`Łączna liczba plików: ${manifestData.files.length}`);
+
+    } catch (err) {
+        console.error('❌ Błąd krytyczny:', err.message);
     }
-
-    const files = fs.readdirSync(modsFolder);
-
-    files.forEach(file => {
-        if (file.endsWith('.jar')) {
-            const filePath = path.join(modsFolder, file);
-            const hash = getHash(filePath);
-            
-            // Tworzenie bezpośredniego linku do GitHub RAW
-            const url = `https://raw.githubusercontent.com/${CONFIG.username}/${CONFIG.repo}/${CONFIG.branch}/mods/${encodeURIComponent(file)}`;
-
-            manifest.files.push({
-                path: `mods/${file}`,
-                hash: hash,
-                url: url
-            });
-            
-            console.log(`Dodano: ${file}`);
-        }
-    });
-
-    fs.writeFileSync(outputFile, JSON.stringify(manifest, null, 2));
-    console.log("---------------------------------------");
-    console.log(`Sukces! Plik ${outputFile} został wygenerowany.`);
-    console.log(`Liczba modów: ${manifest.files.length}`);
 }
 
-generate();
+generateManifest();
