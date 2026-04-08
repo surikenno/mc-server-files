@@ -5,6 +5,10 @@
         {
             "path": "resourcepacks/Better-Leaves-9.5.zip",
             "url": "https://raw.githubusercontent.com/surikenno/mc-server-files/main/resourcepacks/Better-Leaves-9.5.zip"
+        },
+        {
+            "path": "mods/jei.jar",
+            "url": "https://cdn.modrinth.com/data/u6dRKJwZ/versions/p7yZWpEg/jei-1.20.1-forge-15.20.0.129.jar"
         }
     ]
 }
